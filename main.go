@@ -1,6 +1,7 @@
 package main
 
 import (
+	"encoding/json"
 	"flag"
 	"fmt"
 	"io"
@@ -40,13 +41,10 @@ flags:`)
 		v          = flags.Bool("v", false, "verbose output")
 		paramsStr  = flags.String("params", "", "list of parameters in the format: \"key:value,key:value\"")
 		ignoreList = flags.String("ignore", "", "comma separated list of interfaces to ignore")
+		toJSON     = flags.Bool("toJSON", false, "converts defintion to JSON")
 	)
 	if err := flags.Parse(args[1:]); err != nil {
 		return err
-	}
-	if *template == "" {
-		flags.PrintDefaults()
-		return errors.New("missing template")
 	}
 	params, err := parseParams(*paramsStr)
 	if err != nil {
@@ -69,14 +67,30 @@ flags:`)
 	if *pkg != "" {
 		def.PackageName = *pkg
 	}
-	b, err := ioutil.ReadFile(*template)
-	if err != nil {
-		return err
+
+	var out string
+	if *toJSON {
+		b, err := json.MarshalIndent(def, "", "  ")
+		if err != nil {
+			return errors.Wrap(err, "toJSON")
+		}
+		out = string(b) + "\n"
+	} else {
+		if *template == "" {
+			flags.PrintDefaults()
+			return errors.New("missing template")
+		}
+
+		b, err := ioutil.ReadFile(*template)
+		if err != nil {
+			return err
+		}
+		out, err = render.Render(string(b), def, params)
+		if err != nil {
+			return err
+		}
 	}
-	out, err := render.Render(string(b), def, params)
-	if err != nil {
-		return err
-	}
+
 	var w io.Writer = stdout
 	if *outfile != "" {
 		f, err := os.Create(*outfile)
