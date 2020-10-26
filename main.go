@@ -41,7 +41,7 @@ flags:`)
 		v          = flags.Bool("v", false, "verbose output")
 		paramsStr  = flags.String("params", "", "list of parameters in the format: \"key:value,key:value\"")
 		ignoreList = flags.String("ignore", "", "comma separated list of interfaces to ignore")
-		toJSON     = flags.Bool("toJSON", false, "converts defintion to JSON")
+		toJSON     = flags.Bool("toJSON", false, "convert definitions to JSON")
 	)
 	if err := flags.Parse(args[1:]); err != nil {
 		return err
