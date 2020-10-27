@@ -9,18 +9,18 @@ type Welcomer interface {
 // WelcomeRequest is the request object for Welcomer.Welcome.
 type WelcomeRequest struct {
 	// To is the address of the person to send the message to.
-	// example: "your@email.com"
-	// featured: true
+	// META(example): "your@email.com"
+	// META(featured): true
 	To string
 	// Name is the name of the person to welcome.
-	// example: "John Smith"
+	// META(example): "John Smith"
 	Name string
 	// The number of times to send the message.
-	// example: 3
+	// META(example): 3
 	Times int
 	// NewCustomer indicates whether this is a new customer
 	// or not.
-	// example: true
+	// META(example): true
 	NewCustomer bool
 }
 

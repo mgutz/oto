@@ -2,6 +2,7 @@ package parser
 
 import (
 	"bytes"
+	"encoding/json"
 	"go/doc"
 	"strings"
 	"testing"
@@ -85,7 +86,7 @@ You will love it.`)
 	greetOutputObject, err := def.Object(def.Services[0].Methods[0].OutputObject.TypeName)
 	is.NoErr(err)
 	is.Equal(greetOutputObject.Name, "GetGreetingsResponse")
-	is.Equal(greetOutputObject.Comment, "GetGreetingsResponse is the respponse object for GreeterService.GetGreetings.")
+	is.Equal(greetOutputObject.Comment, "GetGreetingsResponse is the response object for GreeterService.GetGreetings.")
 	is.Equal(greetOutputObject.Metadata["featured"], false) // custom metadata
 	is.Equal(len(greetOutputObject.Fields), 2)
 	is.Equal(greetOutputObject.Fields[0].Name, "Greetings")
@@ -191,15 +192,25 @@ func TestExtractCommentMetadata(t *testing.T) {
 	p := &Parser{}
 	p.Verbose = testing.Verbose()
 	metadata, comment, err := p.extractCommentMetadata(`
-		This is a comment
-		example: "With an example"
-		required: true
-		monkey: 24
+    This is a comment
+
+    Another comment
+		META(example): "With an example"
+    META(required): true
+    META(multiline): {
+      "animal": "monkey"
+    }
+		META(monkey): 24
 		Kind is one of: monthly, weekly, tags-monthly, tags-weekly
 	`)
 	is.NoErr(err)
-	is.Equal(comment, "This is a comment")
+	is.Equal(comment, "This is a comment\n\nAnother comment")
 	is.Equal(metadata["example"], "With an example")
 	is.Equal(metadata["required"], true)
-	is.Equal(metadata["monkey"], float64(24))
+
+	b, err := json.Marshal(metadata["multiline"])
+	is.NoErr(err)
+	is.Equal(string(b), `{"animal":"monkey"}`)
+	//is.Equal(metadata["monkey"], float64(24))
+	is.True(strings.HasPrefix(metadata["monkey"].(string), "ERROR"))
 }

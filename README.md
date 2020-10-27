@@ -7,6 +7,32 @@ Go driven rpc code generation tool for right now.
 - Generate server and client code
 - Production ready templates (or copy and modify)
 
+## Fork
+
+- CLI flag to output JSON for external utility consumption. In my case, I prefer
+  ES6 template strings for code generation instead of learning another template DSL.
+
+  ```sh
+  oto -toJSON -o rpc.json rpc.go
+  ```
+
+- Changed comments metadata directive to `META(key):` like Go's `BUG(user):`.
+  META value can span multiple lines stopping at next META or end of comment
+  block. Unfortunately, this is a BREAKING change from the upstream project
+  and prevents merging my work back into upstream project :(
+- Added package level comments and data
+
+  ```go
+  // Comment
+  //
+  // META(namespace): "github.com/mgutz/c"
+  // META(imports): [
+  //  "github.com/mgutz/a",
+  //  "github.com/mgutz/b"
+  // ]
+  package rpc
+  ```
+
 ## Templates
 
 These templates are already being used in production.
@@ -27,7 +53,9 @@ These templates are already being used in production.
 Install the project:
 
 ```
+
 go install github.com/pacedotdev/oto
+
 ```
 
 Create a project folder, and write your service definition as a Go interface:
@@ -120,13 +148,13 @@ func main() {
 Use the generated client to access the service in JavaScript:
 
 ```javascript
-import { GreeterService } from "oto.gen.js";
+import { GreeterService } from 'oto.gen.js';
 
 const greeterService = new GreeterService();
 
 greeterService
   .greet({
-    name: "Mat",
+    name: 'Mat',
   })
   .then((response) => alert(response.greeting))
   .catch((e) => alert(e));

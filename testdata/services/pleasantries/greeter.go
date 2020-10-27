@@ -6,7 +6,7 @@ import (
 
 // GreeterService is a polite API.
 // You will love it.
-// strapline: "A lovely greeter service"
+// META(strapline): "A lovely greeter service"
 type GreeterService interface {
 	// Greet creates a Greeting for one or more people.
 	// featured: true

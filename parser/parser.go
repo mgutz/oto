@@ -31,6 +31,10 @@ type Definition struct {
 	// Imports is a map of Go imports that should be imported into
 	// Go code.
 	Imports map[string]string `json:"imports"`
+	// Comment is the package comment.
+	Comment string `json:"comment"`
+	// Metadata is the meta parsed from package comment.
+	Metadata map[string]interface{} `json:"metadata"`
 }
 
 // Object looks up an object by name. Returns ErrNotFound error
@@ -147,7 +151,7 @@ func New(patterns ...string) *Parser {
 // Parse parses the files specified, returning the definition.
 func (p *Parser) Parse() (Definition, error) {
 	cfg := &packages.Config{
-		Mode:  packages.NeedTypes | packages.NeedName | packages.NeedTypesInfo | packages.NeedDeps | packages.NeedName | packages.NeedSyntax,
+		Mode:  packages.NeedTypes | packages.NeedName | packages.NeedTypesInfo | packages.NeedDeps | packages.NeedSyntax,
 		Tests: false,
 	}
 	pkgs, err := packages.Load(cfg, p.patterns...)
@@ -162,6 +166,12 @@ func (p *Parser) Parse() (Definition, error) {
 		if err != nil {
 			panic(err)
 		}
+
+		p.def.Metadata, p.def.Comment, err = p.extractCommentMetadata(p.docs.Doc)
+		if err != nil {
+			return p.def, p.wrapErr(errors.New("extract package metadata"), pkg, 0)
+		}
+
 		p.def.PackageName = pkg.Name
 		scope := pkg.Types.Scope()
 		for _, name := range scope.Names() {
@@ -527,43 +537,66 @@ func cleanComment(s string) string {
 
 // metadataCommentRegex is the regex to pull key value metadata
 // used since we can't simply trust lines that contain a colon
-var metadataCommentRegex = regexp.MustCompile(`^.*: .*`)
+var metadataCommentRegex = regexp.MustCompile(`^META\(([^)]+)\):`)
 
 // extractCommentMetadata extracts key value pairs from the comment.
 // It returns a map of metadata, and the
 // remaining comment string.
 // Metadata fields should succeed the comment string.
 func (p *Parser) extractCommentMetadata(comment string) (map[string]interface{}, string, error) {
-	var lines []string
+	var commentLines []string
 	var metadata = make(map[string]interface{})
 	s := bufio.NewScanner(strings.NewReader(comment))
+	metaKey := ""
+	metaJSON := ""
+
+	shouldUnmarshal := func(jsonStr string) interface{} {
+		var v interface{}
+		if err := json.Unmarshal([]byte(jsonStr), &v); err != nil {
+			msg := fmt.Sprintf("ERROR Invalid JSON (%s): %s\n", jsonStr, err)
+			if p.Verbose {
+				fmt.Printf(msg)
+			}
+			return msg
+		}
+		return v
+	}
+
 	for s.Scan() {
 		line := strings.TrimSpace(s.Text())
-		if metadataCommentRegex.MatchString(line) {
-			line = strings.TrimSpace(line)
-			if line == "" {
-				return metadata, strings.Join(lines, "\n"), nil
-			}
-			// SplitN is being used to ensure that colons can exist
-			// in values by only splitting on the first colon in the line
-			splitLine := strings.SplitN(line, ": ", 2)
-			key := splitLine[0]
-			value := strings.TrimSpace(splitLine[1])
-			var val interface{}
-			if err := json.Unmarshal([]byte(value), &val); err != nil {
-				if p.Verbose {
-					fmt.Printf("(skipping) failed to marshal JSON value (%s): %s\n", err, value)
+
+		matches := metadataCommentRegex.FindStringSubmatch(line)
+		if matches == nil {
+			if metaKey == "" {
+				// do not accumulate comments until a non-empty line is seen
+				if line == "" && len(commentLines) == 0 {
+					continue
 				}
+				commentLines = append(commentLines, line)
 				continue
 			}
-			metadata[key] = val
+
+			metaJSON += line
 			continue
 		}
-		line = strings.TrimSpace(line)
-		if line == "" {
-			continue
+
+		// At this point, the line starts with META(key):
+
+		// If currently in a META block, parse current JSON
+		if metaKey != "" {
+			metadata[metaKey] = shouldUnmarshal(metaJSON)
 		}
-		lines = append(lines, line)
+
+		// Prepare for next iteration
+		metaKey = matches[1]
+		// rest of string is start of JSON, 7 is len("META():")
+		metaJSON = line[len(metaKey)+7:]
 	}
-	return metadata, strings.Join(lines, "\n"), nil
+
+	// there might be a META left to process
+	if metaKey != "" {
+		metadata[metaKey] = shouldUnmarshal(metaJSON)
+	}
+
+	return metadata, strings.Join(commentLines, "\n"), nil
 }
