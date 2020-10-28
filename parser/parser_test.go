@@ -180,10 +180,6 @@ You will love it.`)
 			is.Equal(def.Objects[i].Imported, true)
 		}
 	}
-
-	// b, err := json.MarshalIndent(def, "", "  ")
-	// is.NoErr(err)
-	// log.Println(string(b))
 }
 
 func TestExtractCommentMetadata(t *testing.T) {
@@ -194,23 +190,25 @@ func TestExtractCommentMetadata(t *testing.T) {
 	metadata, comment, err := p.extractCommentMetadata(`
     This is a comment
 
-    Another comment
+		More comment
+
 		META(example): "With an example"
     META(required): true
     META(multiline): {
       "animal": "monkey"
-    }
-		META(monkey): 24
-		Kind is one of: monthly, weekly, tags-monthly, tags-weekly
+		}
+		META(number): 42
+		META(monkey): "will error as it is joined with next line". META
+		is multi-line aware
 	`)
 	is.NoErr(err)
-	is.Equal(comment, "This is a comment\n\nAnother comment")
+	is.Equal(comment, "This is a comment\n\nMore comment")
 	is.Equal(metadata["example"], "With an example")
 	is.Equal(metadata["required"], true)
 
 	b, err := json.Marshal(metadata["multiline"])
 	is.NoErr(err)
 	is.Equal(string(b), `{"animal":"monkey"}`)
-	//is.Equal(metadata["monkey"], float64(24))
+	is.Equal(metadata["number"], float64(42))
 	is.True(strings.HasPrefix(metadata["monkey"].(string), "ERROR"))
 }

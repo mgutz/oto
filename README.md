@@ -1,29 +1,35 @@
-![Welcome to oto project](oto-logo.png)
+# Oto
 
-Go driven rpc code generation tool for right now.
+Go driven RPC code generation tool for right now.
 
 - 100% Go
 - Describe services with Go interfaces (with structs, methods, comments, etc.)
 - Generate server and client code
 - Production ready templates (or copy and modify)
 
-## Fork
+## This Fork
 
-- CLI flag to output JSON for external utility consumption. In my case, I prefer
-  ES6 template strings for code generation instead of learning another template DSL.
+- CLI flag to output JSON for external utility consumption.
+
+  I prefer dealing with JSON than having to reference oto's internal data structures.
+  JSON is much easier to reference when writing templates.
 
   ```sh
-  oto -toJSON -o rpc.json rpc.go
+  oto -json rpc.go > foo.json
+  jq '.packageName' foo.json
   ```
 
 - Changed comments metadata directive to `META(key):` like Go's `BUG(user):`.
-  META value can span multiple lines stopping at next META or end of comment
-  block. Unfortunately, this is a BREAKING change from the upstream project
-  and prevents merging my work back into upstream project :(
-- Added package level comments and data
+  META value may span multiple lines stopping at next META or end of comment
+  block. The value must be valid JSON.
+
+  The existing convention of `key:` is how I usually mark sections in comments.
+  Unfortunately, this is a BREAKING change and prevents merging to upstream project :(
+
+- Added package level comments and metadata
 
   ```go
-  // Comment
+  // Package rpc comment.
   //
   // META(namespace): "github.com/mgutz/c"
   // META(imports): [
@@ -176,12 +182,13 @@ Within your templates, you may access these strings with `<%= params["key1"] %>`
 
 ## Comment metadata
 
-It's possible to include additional metadata for services, methods, objects, and fields
+It's possible to include additional metadata for package, services, methods, objects, and fields
 in the comments.
 
 ```go
 // Thing does something.
-// field: "value"
+//
+// META(field): "value"
 type Thing struct {
     //...
 }
@@ -193,14 +200,15 @@ The `Metadata["field"]` value will be the string `value`.
 
 Examples are officially supported, but all data is available via the `Metadata` map fields.
 
-## Plain JSON
+## JSON Conversion
 
-To convert definitions to JSON for external utility consumption
+To convert definitions to JSON. Templates are not processed.
 
 ```sh
-oto -toJSON greeter_service.go |  jq '.services[0].name'
+oto -J greeter_service.go |  jq '.services[0].name'
 
-oto -toJSON -out greeter_service.json greeter_service.go
+oto -J greeter_service.go > greeter_service.json
+node generate.js greeter_service.json
 ```
 
 ### Examples

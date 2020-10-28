@@ -598,5 +598,5 @@ func (p *Parser) extractCommentMetadata(comment string) (map[string]interface{},
 		metadata[metaKey] = shouldUnmarshal(metaJSON)
 	}
 
-	return metadata, strings.Join(commentLines, "\n"), nil
+	return metadata, strings.TrimSpace(strings.Join(commentLines, "\n")), nil
 }
